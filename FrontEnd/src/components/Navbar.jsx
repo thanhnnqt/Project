@@ -41,6 +41,7 @@ export default function Navbar() {
 
                 <div className="menu">
                     <Link to="/" className="menu-item">Trang chủ</Link>
+                    <Link to="/shop" className="menu-item">Cửa hàng</Link>
                     <Link to="/about" className="menu-item">Giới thiệu</Link>
                 </div>
 

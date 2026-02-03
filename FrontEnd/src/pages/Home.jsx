@@ -5,10 +5,13 @@ import "./Home.css";
 
 export default function Home() {
     const [gameTypes, setGameTypes] = useState([]);
+    const [leaderboard, setLeaderboard] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [leaderboardLoading, setLeaderboardLoading] = useState(true);
     const navigate = useNavigate();
 
     useEffect(() => {
+        // Fetch game types
         api.get("/game-types")
             .then(res => {
                 setGameTypes(res.data);
@@ -17,6 +20,17 @@ export default function Home() {
             .catch(err => {
                 console.error("Lỗi khi tải thể loại game:", err);
                 setLoading(false);
+            });
+
+        // Fetch leaderboard
+        api.get("/leaderboard?limit=10")
+            .then(res => {
+                setLeaderboard(res.data);
+                setLeaderboardLoading(false);
+            })
+            .catch(err => {
+                console.error("Lỗi khi tải bảng xếp hạng:", err);
+                setLeaderboardLoading(false);
             });
     }, []);
 
@@ -32,86 +46,60 @@ export default function Home() {
                 </p>
             </section>
 
-            {/* GAME SELECTION */}
-            <section className="game-selection" style={{ padding: "40px 20px", maxWidth: "1200px", margin: "0 auto" }}>
-                <h2 style={{ color: "#fff", marginBottom: "30px", textAlign: "center", fontSize: "32px" }}>Chọn thể loại game</h2>
+            {/* MAIN CONTENT - TWO COLUMNS */}
+            <section className="content-grid">
+                {/* LEFT COLUMN - GAME SELECTION */}
+                <div className="game-selection-section">
+                    <h2>Chọn thể loại game</h2>
 
-                {loading ? (
-                    <div style={{ color: "#9ca3af", textAlign: "center" }}>Đang tải thể loại game...</div>
-                ) : (
-                    <div style={{
-                        display: "grid",
-                        gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
-                        gap: "25px"
-                    }}>
-                        {gameTypes.map(game => (
-                            <div
-                                key={game.id}
-                                className="game-card"
-                                onClick={() => navigate(`/lobby/${game.id}`)}
-                                style={{
-                                    background: "rgba(31, 41, 55, 0.8)",
-                                    borderRadius: "20px",
-                                    padding: "30px",
-                                    textAlign: "center",
-                                    cursor: "pointer",
-                                    border: "1px solid rgba(255, 255, 255, 0.1)",
-                                    transition: "all 0.3s ease",
-                                    display: "flex",
-                                    flexDirection: "column",
-                                    alignItems: "center"
-                                }}
-                            >
-                                <div style={{
-                                    width: "80px",
-                                    height: "80px",
-                                    background: "rgba(251, 191, 36, 0.1)",
-                                    borderRadius: "50%",
-                                    display: "flex",
-                                    justifyContent: "center",
-                                    alignItems: "center",
-                                    marginBottom: "20px",
-                                    fontSize: "40px"
-                                }}>
-                                    ♠️
+                    {loading ? (
+                        <div className="loading-text">Đang tải thể loại game...</div>
+                    ) : (
+                        <div className="game-list">
+                            {gameTypes.map(game => (
+                                <div
+                                    key={game.id}
+                                    className="game-list-item"
+                                    onClick={() => navigate(`/lobby/${game.id}`)}
+                                >
+                                    <div className="game-list-icon">♠️</div>
+                                    <div className="game-list-info">
+                                        <h3>{game.name}</h3>
+                                        <p>{game.minPlayers}-{game.maxPlayers} người chơi</p>
+                                    </div>
+                                    <button className="game-list-btn">Vào Chơi →</button>
                                 </div>
-                                <h3 style={{ color: "#fff", fontSize: "22px", marginBottom: "12px" }}>{game.name}</h3>
-                                <p style={{ color: "#9ca3af", fontSize: "14px", lineHeight: "1.5" }}>
-                                    {game.minPlayers}-{game.maxPlayers} người chơi. Tham gia ngay để thể hiện kỹ năng của bạn!
-                                </p>
-                                <button style={{
-                                    marginTop: "20px",
-                                    padding: "10px 24px",
-                                    background: "#fbbf24",
-                                    color: "#111827",
-                                    border: "none",
-                                    borderRadius: "8px",
-                                    fontWeight: "700",
-                                    cursor: "pointer"
-                                }}>
-                                    Chọn Bàn
-                                </button>
-                            </div>
-                        ))}
-                    </div>
-                )}
-            </section>
-
-            {/* STATS */}
-            <section className="stats" style={{ marginTop: "60px" }}>
-                <div className="stat-box">
-                    <h2>1,234</h2>
-                    <p>Người chơi online</p>
+                            ))}
+                        </div>
+                    )}
                 </div>
 
-                <div className="stat-box">
-                    <h2>567</h2>
-                    <p>Phòng đang chơi</p>
-                </div>
+                {/* RIGHT COLUMN - LEADERBOARD */}
+                <div className="leaderboard-section">
+                    <h2>🏆 Bảng Xếp Hạng</h2>
+                    <p className="leaderboard-subtitle">Top 10 người chơi hàng đầu</p>
 
-                <div className="stat-box">
-                    <h2>10K+</h2>
-                    <p>Người dùng</p>
+                    {leaderboardLoading ? (
+                        <div className="loading-text">Đang tải bảng xếp hạng...</div>
+                    ) : (
+                        <div className="leaderboard-list">
+                            {leaderboard.map((player, index) => (
+                                <div key={player.id} className="leaderboard-item">
+                                    <div className="rank-badge">
+                                        {index === 0 && "🥇"}
+                                        {index === 1 && "🥈"}
+                                        {index === 2 && "🥉"}
+                                        {index > 2 && `#${index + 1}`}
+                                    </div>
+                                    <div className="player-info">
+                                        <div className="player-name">{player.displayName || player.username}</div>
+                                        <div className="player-tier">{player.rankTier}</div>
+                                    </div>
+                                    <div className="player-points">{player.rankPoints} điểm</div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
                 </div>
             </section>
         </div>

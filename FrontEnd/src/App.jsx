@@ -5,6 +5,7 @@ import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Lobby from "./pages/Lobby";
 import Room from "./pages/Room";
+import Shop from "./pages/Shop";
 
 export default function App() {
     return (
@@ -14,6 +15,7 @@ export default function App() {
                     <Route path="/" element={<Home />} />
                     <Route path="/login" element={<Login />} />
                     <Route path="/register" element={<Register />} />
+                    <Route path="/shop" element={<Shop />} />
                     <Route path="/lobby/:gameTypeId" element={<Lobby />} />
                     <Route path="/room/:id" element={<Room />} />
                 </Routes>

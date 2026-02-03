@@ -10,4 +10,5 @@ public interface IPlayerService {
     Player save(Player player);
     void deleteById(Long id);
     Optional<Player> findByUsername(String username);
+    List<Player> getTopPlayers(int limit);
 }

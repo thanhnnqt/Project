@@ -34,6 +34,18 @@ export default function Table() {
         }
     }, [user, nav]);
 
+    // Refresh profile on mount to sync Navbar with latest rank
+    useEffect(() => {
+        if (user?.id) {
+            api.get(`/auth/profile/${user.id}`).then(res => {
+                localStorage.setItem("user", JSON.stringify(res.data));
+                window.dispatchEvent(new Event("storage"));
+            }).catch(err => {
+                console.error("Failed to refresh profile:", err);
+            });
+        }
+    }, [user?.id]);
+
     const {
         gameState, error, startGame, toggleReady, resetRoom, kickPlayer, playMove, passTurn, leaveRoom, sendChat, sendEmoji, setError
     } = useGameSocket(roomId, playerId);
@@ -74,15 +86,18 @@ export default function Table() {
         }
     }, [gameState?.lastInteraction, gameState?.displayNames]);
 
-    // Profile update on win
+    // Sync localStorage when game ends (for Navbar display)
     useEffect(() => {
-        if (gameState?.winnerId && user) {
-            api.get(`/api/auth/profile/${user.id}`).then(res => {
+        if (gameState?.winnerId && user && playerId) {
+            // Fetch fresh profile to get updated balance and rank
+            api.get(`/auth/profile/${user.id}`).then(res => {
                 localStorage.setItem("user", JSON.stringify(res.data));
                 window.dispatchEvent(new Event("storage"));
+            }).catch(err => {
+                console.error("Failed to fetch updated profile:", err);
             });
         }
-    }, [gameState?.winnerId]);
+    }, [gameState?.winnerId, user, playerId]);
 
     if (!gameState) return <div className="loading-casino">Vào bàn...</div>;
 
@@ -194,8 +209,8 @@ export default function Table() {
                             <PlayerAvatar
                                 playerId={playerId}
                                 displayName={user?.displayName}
-                                rankTier={user?.rankTier}
-                                rankPoints={user?.rankPoints}
+                                rankTier={gameState.rankTiers[playerId] || user?.rankTier}
+                                rankPoints={gameState.rankPoints[playerId] || user?.rankPoints}
                                 isHost={gameState.hostId === playerId}
                                 isMe={true}
                                 isTurn={isMyTurn}

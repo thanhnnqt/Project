@@ -32,10 +32,16 @@ public class WebSocketEventListener {
 
             if (game.getPlayerIds().isEmpty()) {
                 try {
-                    roomService.deleteById(Long.parseLong(roomId));
+                    // Check if room exists before deleting to avoid exception
+                    Long roomIdLong = Long.parseLong(roomId);
+                    if (roomService.findById(roomIdLong).isPresent()) {
+                        roomService.deleteById(roomIdLong);
+                    } else {
+                        System.out.println("Room " + roomId + " already deleted or not found");
+                    }
                 } catch (Exception e) {
-                    // Handle potential errors if room already deleted or invalid ID
-                    System.err.println("Error deleting room " + roomId + ": " + e.getMessage());
+                    // Handle potential errors
+                    System.out.println("Room " + roomId + " deletion skipped: " + e.getMessage());
                 }
                 gameManager.deleteGame(roomId);
             } else {
