@@ -13,8 +13,10 @@ class WebSocketService {
             return;
         }
 
-        console.log('Initiating WebSocket connection to http://localhost:8080/ws');
-        const socket = new SockJS('http://localhost:8080/ws');
+        const API_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080/api";
+        const WS_URL = API_URL.replace(/\/api\/?$/, "") + "/ws";
+        console.log('Initiating WebSocket connection to ' + WS_URL);
+        const socket = new SockJS(WS_URL);
         this.client = Stomp.over(socket);
 
         // Ensure debug logs go to console
