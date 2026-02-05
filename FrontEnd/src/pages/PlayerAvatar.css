@@ -16,17 +16,20 @@
 /* Thẻ người chơi nằm ngang */
 .horizontal-gold-card {
     position: relative;
-    width: 240px;
-    /* Chiều ngang rộng hơn */
-    height: 80px;
-    /* Chiều cao thấp lại */
-    background: rgba(0, 0, 0, 0.7);
-    backdrop-filter: blur(5px);
-    border: 2px solid #fbbf24;
+    width: 250px;
+    /* Increased width slightly */
+    height: 100px;
+    /* Increased height to accommodate larger frames */
+    background: rgba(0, 0, 0, 0.2);
+    /* Nền tối siêu mỏng để nổi bật viền */
+    backdrop-filter: blur(4px);
+    border: 1.5px solid rgba(251, 191, 36, 0.4);
+    /* Viền vàng mờ sang trọng */
     border-radius: 12px;
-    /* Bo tròn mạnh bên trái cho Avatar */
     padding: 5px;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+    overflow: visible !important;
+    /* Required for ornate frames and glowing effects */
 }
 
 .gold-card-inner {
@@ -36,6 +39,16 @@
     align-items: center;
     gap: 15px;
     padding: 0 10px 0 2px;
+    overflow: visible;
+    /* Allow frame wings to extend beyond the card height */
+}
+
+.avatar-main-wrapper {
+    position: relative;
+    width: 65px;
+    height: 65px;
+    /* Loại bỏ isolation để mix-blend-mode: screen có thể hòa trộn với nền thẻ (giúp ẩn nền đen của JPG) */
+    /* isolation: isolate; */
 }
 
 /* Avatar hình tròn */
@@ -44,10 +57,18 @@
     width: 65px;
     height: 65px;
     border-radius: 50%;
-    border: 2px solid #fbbf24;
+    border: none;
     overflow: hidden;
-    background: #1a1a1a;
+    background: transparent;
+    /* Remove black background to avoid circles */
     flex-shrink: 0;
+    z-index: 1;
+    /* Để thấp hơn khung avatar */
+}
+
+/* Hide border when frame is present */
+.avatar-frame-container+.avatar-circle-box {
+    border: none;
 }
 
 .avatar-circle-box img {
@@ -62,23 +83,32 @@
     display: flex;
     flex-direction: column;
     justify-content: center;
-    gap: 4px;
+    align-items: center;
+    /* Center horizontally in the remaining space */
+    gap: 8px;
+    /* Increased gap for better vertical separation */
     overflow: hidden;
+    padding-left: 5px;
 }
 
 .info-top-row {
     display: flex;
     align-items: center;
+    justify-content: center;
+    /* Center horizontally */
     gap: 8px;
+    width: 100%;
 }
 
 .player-name-text {
-    font-size: 15px;
-    font-weight: bold;
-    color: white;
+    font-size: 20px;
+    /* Bigger name */
+    font-weight: 900;
+    color: #fff;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    text-shadow: 0 0 10px rgba(251, 191, 36, 0.3);
 }
 
 .host-icon-mini {
@@ -89,14 +119,17 @@
 .info-bottom-row {
     display: flex;
     align-items: center;
+    justify-content: center;
+    /* Center horizontally */
     gap: 12px;
+    width: 100%;
 }
 
 .rank-label {
     font-size: 12px;
-    color: #ffd700;
+    color: #fbbf24;
     font-weight: bold;
-    background: rgba(255, 215, 0, 0.15);
+    background: rgba(251, 191, 36, 0.15);
     padding: 1px 6px;
     border-radius: 4px;
 }
@@ -157,10 +190,8 @@
     position: absolute;
     top: -2px;
     left: -2px;
-    width: 244px;
-    /* 240 + 4 border allowance */
-    height: 84px;
-    /* 80 + 4 border allowance */
+    width: 254px;
+    height: 104px;
     pointer-events: none;
     z-index: 10;
     overflow: visible;
@@ -171,8 +202,8 @@
     stroke: #fbbf24;
     stroke-width: 4;
     stroke-linecap: round;
-    stroke-dasharray: 640;
-    /* Perimeter of 240x80 card (approx 2*(240+80)) */
+    stroke-dasharray: 700;
+    /* Perimeter of 250x100 card */
     stroke-dashoffset: 0;
     animation: timerCountdown 15s linear forwards;
     filter: drop-shadow(0 0 5px #fbbf24);
@@ -229,4 +260,530 @@
     display: flex;
     align-items: center;
     justify-content: center;
+}
+
+.avatar-frame-container {
+    position: absolute;
+    top: -22px;
+    left: -22px;
+    right: -22px;
+    bottom: -22px;
+    pointer-events: none;
+    z-index: 10;
+    mix-blend-mode: screen;
+    /* Dùng mask-image tỏa tròn để lọc bỏ hoàn toàn các pixel đen ở góc của ảnh JPG */
+    -webkit-mask-image: radial-gradient(circle, black 65%, transparent 72%);
+    mask-image: radial-gradient(circle, black 65%, transparent 72%);
+    /* Thêm filter để làm đen các pixel nhiễu, giúp screen mode sạch hơn */
+    filter: contrast(150%) brightness(110%);
+}
+
+/* 0. Classic Gold (Solid gold glow) */
+.frame-gold {
+    border: 3px solid #fbbf24;
+    box-shadow: 0 0 10px #fbbf24;
+}
+
+/* 1. Diamond Glow (Blue) */
+.frame-diamond {
+    border: 3px solid #00f2ff;
+    box-shadow: 0 0 15px #00f2ff, inset 0 0 10px #00f2ff;
+    animation: diamondGlow 3s infinite alternate;
+}
+
+@keyframes diamondGlow {
+    from {
+        opacity: 0.5;
+        transform: scale(1);
+    }
+
+    to {
+        opacity: 1;
+        transform: scale(1.05);
+    }
+}
+
+/* 2. Burning Fire (Red/Orange) */
+.frame-fire {
+    border: 3px solid #ff4d00;
+    box-shadow: 0 0 20px #ff0000;
+    background: linear-gradient(45deg, transparent, rgba(255, 69, 0, 0.2));
+    animation: firePulse 1.5s infinite;
+}
+
+@keyframes firePulse {
+    0% {
+        transform: scale(1);
+        box-shadow: 0 0 10px #ff4d00;
+    }
+
+    50% {
+        transform: scale(1.08);
+        box-shadow: 0 0 30px #ff0000;
+    }
+
+    100% {
+        transform: scale(1);
+        box-shadow: 0 0 10px #ff4d00;
+    }
+}
+
+/* 3. Ocean Wave (Blue flowing) */
+.frame-wave {
+    border: 4px solid transparent;
+    background: linear-gradient(white, white) padding-box,
+        linear-gradient(90deg, #00d2ff 0%, #3a7bd5 100%) border-box;
+    animation: waveRotate 2s linear infinite;
+}
+
+@keyframes waveRotate {
+    100% {
+        filter: hue-rotate(360deg);
+    }
+}
+
+/* 4. Sparkling Stars (Gold rotating) */
+.frame-stars::after {
+    content: '✦';
+    position: absolute;
+    top: -10px;
+    left: 50%;
+    color: #ffd700;
+    font-size: 18px;
+    animation: starRotate 4s linear infinite;
+    text-shadow: 0 0 10px #ffd700;
+}
+
+@keyframes starRotate {
+    from {
+        transform: rotate(0deg) translateX(35px) rotate(0deg);
+    }
+
+    to {
+        transform: rotate(360deg) translateX(35px) rotate(-360deg);
+    }
+}
+
+.frame-stars {
+    border: 2px dashed #ffd700;
+    animation: starsPulse 2s infinite;
+}
+
+@keyframes starsPulse {
+
+    0%,
+    100% {
+        box-shadow: 0 0 5px #ffd700;
+    }
+
+    50% {
+        box-shadow: 0 0 20px #ffd700;
+    }
+}
+
+.frame-rank-iron,
+.frame-rank-bronze,
+.frame-rank-silver,
+.frame-rank-gold,
+.frame-rank-platinum,
+.frame-rank-diamond,
+.frame-rank-master,
+.frame-rank-challenger {
+    position: absolute;
+    top: -12px;
+    left: -12px;
+    right: -12px;
+    bottom: -12px;
+    background-image: url('/frames/rank_base.png');
+    background-size: 100% 100%;
+    background-position: center;
+    background-repeat: no-repeat;
+    border: none !important;
+    box-shadow: none !important;
+    z-index: 5;
+    /* Improved hole masking for 65px avatar */
+    -webkit-mask-image: radial-gradient(circle, transparent 32%, black 38%);
+    mask-image: radial-gradient(circle, transparent 32%, black 38%);
+    transition: all 0.3s ease;
+}
+
+.frame-rank-iron {
+    filter: grayscale(1) brightness(0.7) contrast(1.2);
+}
+
+.frame-rank-bronze {
+    filter: sepia(1) saturate(2) hue-rotate(-20deg) brightness(0.6);
+}
+
+.frame-rank-silver {
+    filter: grayscale(1) brightness(1.6) contrast(1.1);
+}
+
+.frame-rank-gold {
+    filter: saturate(1.2) brightness(1.1);
+}
+
+.frame-rank-platinum {
+    filter: hue-rotate(140deg) saturate(1.2) brightness(1.3);
+}
+
+.frame-rank-diamond {
+    filter: hue-rotate(180deg) saturate(2) brightness(1.2) drop-shadow(0 0 5px #00f2ff);
+}
+
+.frame-rank-master {
+    filter: hue-rotate(250deg) saturate(1.8) brightness(1.1) drop-shadow(0 0 8px #d900ff);
+}
+
+.frame-rank-challenger {
+    filter: saturate(1.5) brightness(1.2) drop-shadow(0 0 10px #ff0000);
+}
+
+/* === PREMIUM INSPIRED COLLECTION === */
+.frame-neon-cyberpunk {
+    position: absolute;
+    top: -15px;
+    left: -12px;
+    right: -12px;
+    bottom: -15px;
+    background-image: url('/frames/frame_neon_cyberpunk.png');
+    background-size: 110% 110%;
+    background-position: center;
+    background-repeat: no-repeat;
+    z-index: 5;
+    filter: drop-shadow(0 0 10px rgba(168, 85, 247, 0.6)) brightness(1.1);
+    -webkit-mask-image: radial-gradient(circle, transparent 48%, black 53%);
+    mask-image: radial-gradient(circle, transparent 48%, black 53%);
+}
+
+.frame-floral-gold {
+    position: absolute;
+    top: -15px;
+    left: -12px;
+    right: -12px;
+    bottom: -15px;
+    background: linear-gradient(135deg, #ffd700, #fff9c4, #ffd700, #ffc107);
+    background-size: 200% 200%;
+    animation: gold-shine 3s linear infinite;
+    border: 3px solid #ffd700 !important;
+    border-radius: 50% !important;
+    box-shadow: 0 0 15px rgba(255, 215, 0, 0.5) !important;
+    z-index: 5;
+    overflow: visible !important;
+}
+
+.frame-floral-gold::after {
+    content: '🌸';
+    position: absolute;
+    bottom: -6px;
+    right: -6px;
+    font-size: 18px;
+    filter: drop-shadow(0 0 3px white);
+}
+
+.frame-floral-gold::before {
+    content: '✨';
+    position: absolute;
+    top: -5px;
+    left: -5px;
+    font-size: 14px;
+    animation: blink-sparkle 1.5s infinite;
+}
+
+@keyframes gold-shine {
+    0% {
+        background-position: 0% 50%;
+    }
+
+    50% {
+        background-position: 100% 50%;
+    }
+
+    100% {
+        background-position: 0% 50%;
+    }
+}
+
+@keyframes blink-sparkle {
+
+    0%,
+    100% {
+        opacity: 0.3;
+        transform: scale(0.8);
+    }
+
+    50% {
+        opacity: 1;
+        transform: scale(1.2);
+    }
+}
+
+.frame-epic-warrior,
+.frame-epic-laurel,
+.frame-epic-phoenix,
+.frame-epic-sovereign {
+    position: absolute;
+    top: -20px;
+    left: -20px;
+    right: -20px;
+    bottom: -20px;
+    background-image: url('/frames/epic_collection.jpg');
+    background-size: 200% 200%;
+    background-repeat: no-repeat;
+    z-index: 5;
+    mix-blend-mode: screen !important;
+    filter: contrast(180%) brightness(110%);
+    pointer-events: none;
+    transition: all 0.3s ease;
+    /* Đảm bảo khung luôn giữ hình tròn */
+    border-radius: 50%;
+}
+
+/* Define quadrants */
+.frame-epic-warrior {
+    background-position: 0% 0%;
+    /* Keep the radial mask to ensure the circle remains perfectly transparent */
+    -webkit-mask-image: radial-gradient(circle at center, transparent 33%, black 36%);
+    mask-image: radial-gradient(circle at center, transparent 33%, black 36%);
+}
+
+.frame-epic-laurel {
+    background-position: 100% 0%;
+    -webkit-mask-image: radial-gradient(circle at center, transparent 34%, black 38%);
+    mask-image: radial-gradient(circle at center, transparent 34%, black 38%);
+}
+
+.frame-epic-phoenix {
+    background-position: 0% 100%;
+    -webkit-mask-image: radial-gradient(circle at center, transparent 33%, black 36%);
+    mask-image: radial-gradient(circle at center, transparent 33%, black 36%);
+}
+
+.frame-epic-sovereign {
+    background-position: 100% 100%;
+    -webkit-mask-image: radial-gradient(circle at center, transparent 35%, black 40%);
+    mask-image: radial-gradient(circle at center, transparent 35%, black 40%);
+}
+
+/* --- RUBY CARD FRAMES (New Crimson Collection) --- */
+.card-frame-ruby-wrapper {
+    position: absolute;
+    /* Dùng âm để nới rộng khung ra ngoài card 250x100, giúp họa tiết bao quanh đẹp mắt */
+    top: -15px;
+    left: -20px;
+    right: -20px;
+    bottom: -15px;
+    background-image: url('/frames/card_ruby_collection.png');
+    background-size: 200% 200%;
+    background-repeat: no-repeat;
+    z-index: 5;
+    pointer-events: none;
+    /* Reset về screen mode vì nền thẻ không còn màu trắng sáng */
+    filter: invert(1) hue-rotate(180deg) brightness(1.2) contrast(1.3);
+    mix-blend-mode: screen;
+    border-radius: 12px;
+}
+
+.card-frame-ruby-warrior {
+    background-position: 0% 0%;
+}
+
+.card-frame-ruby-laurel {
+    background-position: 100% 0%;
+}
+
+.card-frame-ruby-phoenix {
+    background-position: 0% 100%;
+}
+
+.card-frame-ruby-sovereign {
+    background-position: 100% 100%;
+}
+
+/* --- RUBY AVATAR FRAMES (Circular) --- */
+.frame-ruby-warrior,
+.frame-ruby-laurel,
+.frame-ruby-phoenix,
+.frame-ruby-sovereign {
+    position: absolute;
+    top: -20px;
+    left: -20px;
+    right: -20px;
+    bottom: -20px;
+    background-image: url('/frames/avatar_ruby_collection.jpg');
+    background-size: 200% 200%;
+    background-repeat: no-repeat;
+    z-index: 5;
+    mix-blend-mode: screen !important;
+    /* Tăng tương phản để làm sạch nền đen hơn khi dùng screen mode */
+    filter: contrast(200%) brightness(110%);
+    pointer-events: none;
+    transition: all 0.3s ease;
+    border-radius: 50%;
+}
+
+.frame-ruby-warrior {
+    background-position: 0% 0%;
+    /* Kết hợp mask: Trong suốt ở giữa (cho avatar) và trong suốt ở ngoài (xóa viền đen JPG) */
+    -webkit-mask-image: radial-gradient(circle, transparent 33%, black 36%, black 65%, transparent 72%);
+    mask-image: radial-gradient(circle, transparent 33%, black 36%, black 65%, transparent 72%);
+}
+
+.frame-ruby-laurel {
+    background-position: 100% 0%;
+    -webkit-mask-image: radial-gradient(circle, transparent 34%, black 38%, black 65%, transparent 72%);
+    mask-image: radial-gradient(circle, transparent 34%, black 38%, black 65%, transparent 72%);
+}
+
+.frame-ruby-phoenix {
+    background-position: 0% 100%;
+    -webkit-mask-image: radial-gradient(circle, transparent 33%, black 36%, black 65%, transparent 72%);
+    mask-image: radial-gradient(circle, transparent 33%, black 36%, black 65%, transparent 72%);
+}
+
+.frame-ruby-sovereign {
+    background-position: 100% 100%;
+    -webkit-mask-image: radial-gradient(circle, transparent 35%, black 40%, black 65%, transparent 72%);
+    mask-image: radial-gradient(circle, transparent 35%, black 40%, black 65%, transparent 72%);
+}
+
+/* --- PREMIUM PLAYER CARD FRAMES --- */
+.player-card-frame-wrapper {
+    position: absolute;
+    top: -5px;
+    left: -5px;
+    right: -5px;
+    bottom: -5px;
+    border-radius: 16px;
+    z-index: 4;
+    pointer-events: none;
+}
+
+.player-card-frame-holy {
+    box-shadow: 0 0 20px #fff, 0 0 40px #ffd700;
+    border: 2px solid #ffd700;
+    animation: holyGlow 2s infinite alternate;
+}
+
+@keyframes holyGlow {
+    from {
+        filter: brightness(1) drop-shadow(0 0 5px #ffd700);
+    }
+
+    to {
+        filter: brightness(1.5) drop-shadow(0 0 15px #ffd700);
+    }
+}
+
+.player-card-frame-void {
+    background: linear-gradient(45deg, rgba(75, 0, 130, 0.3), transparent);
+    box-shadow: 0 0 15px #8a2be2, inset 0 0 20px #000;
+    border: 2px solid #8a2be2;
+    animation: voidPulse 3s infinite ease-in-out;
+}
+
+@keyframes voidPulse {
+
+    0%,
+    100% {
+        transform: scale(1);
+        opacity: 0.7;
+    }
+
+    50% {
+        transform: scale(1.02);
+        opacity: 1;
+    }
+}
+
+.player-card-frame-frost {
+    border: 2px solid #00f2ff;
+    box-shadow: 0 0 15px #00f2ff, 0 0 30px rgba(0, 242, 255, 0.4);
+    background: rgba(255, 255, 255, 0.05);
+    animation: frostShimmer 4s infinite linear;
+}
+
+@keyframes frostShimmer {
+    0% {
+        filter: hue-rotate(0deg);
+    }
+
+    100% {
+        filter: hue-rotate(20deg);
+    }
+}
+
+.player-card-frame-phoenix {
+    border: 2.5px solid #ff4d00;
+    box-shadow: 0 0 25px #ff0000, 0 0 10px #ff4d00;
+    animation: fireFlicker 0.2s infinite alternate;
+}
+
+@keyframes fireFlicker {
+    from {
+        opacity: 0.8;
+        transform: skewX(0.5deg);
+    }
+
+    to {
+        opacity: 1;
+        transform: skewX(-0.5deg);
+    }
+}
+
+.player-card-frame-neon {
+    border: 2px solid #bc13fe;
+    box-shadow: 0 0 5px #bc13fe, 0 0 20px #bc13fe;
+    animation: neonBlinker 1.5s infinite steps(1);
+}
+
+@keyframes neonBlinker {
+
+    0%,
+    100% {
+        opacity: 1;
+        border-color: #bc13fe;
+        box-shadow: 0 0 20px #bc13fe;
+    }
+
+    50% {
+        opacity: 0.8;
+        border-color: #00f2ff;
+        box-shadow: 0 0 20px #00f2ff;
+    }
+}
+
+/* --- PREMIUM CARD SKINS --- */
+/* Dragon Fire Skin */
+.skin-dragon-fire {
+    filter: sepia(100%) hue-rotate(-50deg) saturate(300%) brightness(0.8) !important;
+    box-shadow: 0 0 10px #ff4d00;
+}
+
+/* Sakura Bloom Skin */
+.skin-sakura-bloom {
+    filter: sepia(50%) hue-rotate(280deg) saturate(200%) brightness(1.2) !important;
+    box-shadow: 0 0 10px #ff69b4;
+}
+
+/* Cyber Neons Skin */
+.skin-cyber-neons {
+    filter: invert(1) hue-rotate(180deg) saturate(500%) brightness(1.1) !important;
+    box-shadow: 0 0 15px #bc13fe;
+}
+
+/* Royal Gold Skin */
+.skin-royal-gold {
+    filter: sepia(100%) hue-rotate(10deg) saturate(150%) brightness(1) contrast(1.2) !important;
+    box-shadow: 0 0 10px #ffd700;
+    border: 1px solid #ffd700;
+}
+
+/* Apply to hand cards */
+.card-v.skin-dragon-fire,
+.card-v.skin-sakura-bloom,
+.card-v.skin-cyber-neons,
+.card-v.skin-royal-gold {
+    border-radius: 6px;
+    transition: transform 0.2s, filter 0.3s;
 }

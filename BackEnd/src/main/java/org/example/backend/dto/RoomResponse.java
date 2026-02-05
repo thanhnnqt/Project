@@ -20,6 +20,9 @@ public class RoomResponse {
     private int currentPlayerCount;
     private int maxPlayers;
     private String status;
+    
+    @com.fasterxml.jackson.annotation.JsonProperty("hasPassword")
+    private boolean hasPassword;
 
     public static RoomResponse fromEntity(Room room, int currentPlayerCount) {
         return RoomResponse.builder()
@@ -29,8 +32,9 @@ public class RoomResponse {
                 .gameTypeName(room.getGameType().getName())
                 .minBet(room.getMinBet())
                 .currentPlayerCount(currentPlayerCount)
-                .maxPlayers(room.getGameType().getMaxPlayers())
+                .maxPlayers(room.getMaxPlayers() != null ? room.getMaxPlayers() : room.getGameType().getMaxPlayers())
                 .status(room.getStatus())
+                .hasPassword(room.getPassword() != null && !room.getPassword().isEmpty())
                 .build();
     }
 }

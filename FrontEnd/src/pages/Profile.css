@@ -1,0 +1,300 @@
+.profile-container {
+    width: 100%;
+    min-height: 100vh;
+    padding: 120px 20px 40px;
+    background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
+    display: flex;
+    justify-content: center;
+}
+
+.profile-card {
+    max-width: 1100px;
+    width: 100%;
+    background: rgba(255, 255, 255, 0.03);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 24px;
+    display: flex;
+    overflow: hidden;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+}
+
+/* Sidebar Info */
+.profile-sidebar {
+    width: 320px;
+    background: rgba(255, 255, 255, 0.05);
+    padding: 40px 30px;
+    border-right: 1px solid rgba(255, 255, 255, 0.1);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.profile-avatar-preview {
+    margin-bottom: 20px;
+    transform: scale(1.2);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.avatar-upload-section {
+    margin-top: 15px;
+}
+
+.btn-upload-avatar {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: white;
+    padding: 6px 16px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s;
+    backdrop-filter: blur(5px);
+}
+
+.btn-upload-avatar:hover {
+    background: rgba(255, 255, 255, 0.2);
+    border-color: rgba(255, 255, 255, 0.4);
+    transform: translateY(-2px);
+}
+
+.profile-stats {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.stat-item {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.stat-label {
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.5);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.stat-value {
+    font-size: 18px;
+    font-weight: 700;
+    color: white;
+}
+
+.rank-color {
+    color: #818cf8;
+}
+
+.gold-color {
+    color: #fbbf24;
+}
+
+/* Main Content Area */
+.profile-main {
+    flex: 1;
+    padding: 40px 50px;
+}
+
+.profile-header h1 {
+    font-size: 32px;
+    color: white;
+    margin-bottom: 8px;
+}
+
+.profile-header p {
+    color: rgba(255, 255, 255, 0.5);
+    margin-bottom: 40px;
+}
+
+.filter-tabs {
+    display: flex;
+    gap: 15px;
+    margin-bottom: 30px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    padding-bottom: 15px;
+}
+
+.tab-btn {
+    background: none;
+    border: none;
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    padding: 8px 16px;
+    border-radius: 8px;
+    transition: all 0.3s;
+}
+
+.tab-btn.active {
+    color: white;
+    background: rgba(255, 255, 255, 0.1);
+}
+
+/* Frames Grid */
+.frames-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 20px;
+}
+
+.frame-item-card {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 16px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    transition: all 0.3s;
+}
+
+.frame-item-card:hover:not(.locked) {
+    border-color: rgba(255, 255, 255, 0.3);
+    transform: translateY(-5px);
+}
+
+.frame-preview {
+    width: 65px;
+    height: 65px;
+    position: relative;
+    margin-bottom: 15px;
+    /* Create isolation context for blend modes and allow ornate frames to overflow */
+    isolation: isolate;
+    overflow: visible;
+}
+
+.frame-preview img {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+}
+
+.lock-overlay {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(0, 0, 0, 0.8);
+    color: white;
+    font-size: 10px;
+    padding: 4px 8px;
+    border-radius: 10px;
+    white-space: nowrap;
+    z-index: 10;
+}
+
+.frame-item-card.locked {
+    opacity: 0.6;
+    background: rgba(0, 0, 0, 0.2);
+}
+
+.frame-info h4 {
+    color: white;
+    font-size: 14px;
+    margin: 0 0 15px;
+    text-align: center;
+}
+
+.btn-action {
+    width: 100%;
+    padding: 8px;
+    border-radius: 8px;
+    border: none;
+    background: #4f46e5;
+    color: white;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.btn-action:hover:not(:disabled) {
+    background: #4338ca;
+}
+
+.btn-action.active {
+    background: #10b981;
+    cursor: default;
+}
+
+.btn-action:disabled {
+    background: rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 0.3);
+    cursor: not-allowed;
+}
+
+.empty-frames-message {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: 60px 20px;
+    color: rgba(255, 255, 255, 0.4);
+    font-style: italic;
+    background: rgba(255, 255, 255, 0.02);
+    border-radius: 16px;
+    border: 1px dashed rgba(255, 255, 255, 0.1);
+}
+
+.empty-frames-message a {
+    color: #4f46e5;
+    text-decoration: none;
+    font-weight: 600;
+}
+
+.empty-frames-message a:hover {
+    text-decoration: underline;
+}
+
+.player-card-frame-preview .frame-preview {
+    width: 100px;
+    height: 60px;
+    border-radius: 8px;
+}
+
+.player-card-frame-preview .frame-preview img {
+    border-radius: 8px;
+}
+
+/* Card Skin Showcase in Profile */
+.card-skin-showcase.mini {
+    width: 60px;
+    height: 40px;
+    position: relative;
+    display: flex;
+    justify-content: center;
+}
+
+.card-skin-showcase.mini .card-skin-back {
+    width: 35px;
+    height: 50px;
+    border-radius: 4px;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+    position: relative;
+    transform: none;
+}
+
+.card-skin-showcase.mini img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 4px;
+}
+
+@media (max-width: 850px) {
+    .profile-card {
+        flex-direction: column;
+    }
+
+    .profile-sidebar {
+        width: 100%;
+        border-right: none;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+}

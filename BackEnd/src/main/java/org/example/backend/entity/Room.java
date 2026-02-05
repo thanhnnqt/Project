@@ -39,4 +39,7 @@ public class Room {
     @ManyToOne
     @JoinColumn(name = "host_id")
     private Player host;
+
+    @Column(name = "max_players")
+    private Integer maxPlayers;
 }

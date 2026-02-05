@@ -1,12 +1,20 @@
 import { useNavigate, useParams } from "react-router-dom";
 import { useState, useEffect, useRef } from "react";
+import toast from 'react-hot-toast';
 import PlayerAvatar from "./PlayerAvatar.jsx";
 import { useGameSocket } from "../hooks/useGameSocket";
 import api from "../api/axios";
 import "./Table.css";
+import ConfirmModal from "../components/ConfirmModal";
 
-const getCardImage = (card) => {
-    if (!card) return "/cards/back.png";
+const getCardImage = (card, playerId, gameState) => {
+    // Determine the back of the card based on equipped skin
+    const equippedSkin = playerId && gameState?.cardSkins?.[playerId];
+
+    if (!card) {
+        return "/cards/back.png"; // Fallback to default
+    }
+
     const rankMapping = {
         "THREE": "3", "FOUR": "4", "FIVE": "5", "SIX": "6", "SEVEN": "7",
         "EIGHT": "8", "NINE": "9", "TEN": "10",
@@ -27,9 +35,13 @@ export default function Table() {
     const user = userString ? JSON.parse(userString) : null;
     const playerId = user?.id;
 
+    // Modal states
+    const [leaveConfirmOpen, setLeaveConfirmOpen] = useState(false);
+    const [kickConfirm, setKickConfirm] = useState({ isOpen: false, targetId: null, targetName: "" });
+
     useEffect(() => {
         if (!user) {
-            alert("Vui lòng đăng nhập để vào phòng chơi");
+            toast.error("Vui lòng đăng nhập để vào phòng chơi");
             nav("/login");
         }
     }, [user, nav]);
@@ -50,6 +62,14 @@ export default function Table() {
         gameState, error, startGame, toggleReady, resetRoom, kickPlayer, playMove, passTurn, leaveRoom, sendChat, sendEmoji, setError
     } = useGameSocket(roomId, playerId);
 
+    // Show errors via toast
+    useEffect(() => {
+        if (error) {
+            toast.error(error);
+            setError(null);
+        }
+    }, [error, setError]);
+
     const [selectedCards, setSelectedCards] = useState([]);
     const [chatInput, setChatInput] = useState("");
     const [showEmojiPicker, setShowEmojiPicker] = useState(false);
@@ -67,6 +87,17 @@ export default function Table() {
         }
     }, [chatHistory]);
 
+    // Initial sync with room history
+    useEffect(() => {
+        if (gameState?.chatHistory && gameState.chatHistory.length >= chatHistory.length) {
+            setChatHistory(gameState.chatHistory.map(chat => ({
+                sender: chat.playerName,
+                content: chat.message,
+                timestamp: chat.timestamp
+            })));
+        }
+    }, [gameState?.chatHistory]);
+
     // Handle incoming interactions (Chat/Emoji)
     useEffect(() => {
         if (gameState?.lastInteraction) {
@@ -81,7 +112,7 @@ export default function Table() {
                     sender: gameState.displayNames[pId] || "Người chơi",
                     content,
                     timestamp: timestamp || Date.now()
-                }].slice(-50));
+                }].slice(-100));
             }
         }
     }, [gameState?.lastInteraction, gameState?.displayNames]);
@@ -128,6 +159,11 @@ export default function Table() {
 
     const emojis = ["👍", "❤️", "😂", "😡", "😮", "😴", "🔥", "🤡"];
 
+    const handleKickRequest = (targetId) => {
+        const targetName = gameState.displayNames[targetId] || "Người chơi";
+        setKickConfirm({ isOpen: true, targetId, targetName });
+    };
+
     const others = gameState.playerIds.filter(id => id !== playerId);
     const getPlayerByPos = (pos) => {
         if (pos >= others.length) return null;
@@ -142,10 +178,14 @@ export default function Table() {
                 isReady={gameState.readyPlayers.includes(id)}
                 isTurn={gameState.currentPlayerId === id}
                 handSize={gameState.hands[id]?.length || 0}
+                frameEffect={gameState.equippedFrames?.[id]}
+                playerCardFrame={gameState.playerCardFrames?.[id]}
+                cardSkin={gameState.cardSkins?.[id]}
+                avatar={gameState.avatars?.[id]}
                 message={interactions[id]?.type === 'CHAT' ? interactions[id].content : ''}
                 emoji={interactions[id]?.type === 'EMOJI' ? interactions[id].content : ''}
                 emojiTimestamp={interactions[id]?.ts}
-                onKick={gameState.hostId === playerId ? kickPlayer : null}
+                onKick={gameState.hostId === playerId ? handleKickRequest : null}
             />
         );
     };
@@ -154,7 +194,7 @@ export default function Table() {
         <div className="casino-table-wrapper">
             {/* Header */}
             <div className="casino-top-bar">
-                <button className="top-btn" onClick={() => { if (window.confirm("Thoát?")) { leaveRoom(); nav("/"); } }}>❮</button>
+                <button className="top-btn" onClick={() => setLeaveConfirmOpen(true)}>❮</button>
                 <div className="room-title">TIẾN LÊN [Bàn {roomId}]</div>
                 <button className="top-btn">⚙️</button>
             </div>
@@ -168,7 +208,7 @@ export default function Table() {
                         {gameState.tableCards.length > 0 ? (
                             <div className="played-cards-stack">
                                 {gameState.tableCards.map((card, i) => (
-                                    <img key={i} src={getCardImage(card)} alt="c" className="played-card-img" />
+                                    <img key={i} src={getCardImage(card, null, gameState)} alt="c" className="played-card-img" />
                                 ))}
                             </div>
                         ) : (
@@ -214,6 +254,10 @@ export default function Table() {
                                 isHost={gameState.hostId === playerId}
                                 isMe={true}
                                 isTurn={isMyTurn}
+                                frameEffect={gameState.equippedFrames?.[playerId]}
+                                playerCardFrame={gameState.playerCardFrames?.[playerId]}
+                                cardSkin={gameState.cardSkins?.[playerId]}
+                                avatar={gameState.avatars?.[playerId] || user?.avatar}
                                 message={interactions[playerId]?.type === 'CHAT' ? interactions[playerId].content : ''}
                                 emoji={interactions[playerId]?.type === 'EMOJI' ? interactions[playerId].content : ''}
                                 emojiTimestamp={interactions[playerId]?.ts}
@@ -223,9 +267,9 @@ export default function Table() {
                             {myHand.map((card, i) => (
                                 <img
                                     key={i}
-                                    src={getCardImage(card)}
+                                    src={getCardImage(card, playerId, gameState)}
                                     alt="card"
-                                    className={`card-v ${selectedCards.some(sc => JSON.stringify(sc) === JSON.stringify(card)) ? "sel" : ""}`}
+                                    className={`card-v ${selectedCards.some(sc => JSON.stringify(sc) === JSON.stringify(card)) ? "sel" : ""} ${gameState.cardSkins?.[playerId] || ""}`}
                                     onClick={() => handleCardClick(card)}
                                 />
                             ))}
@@ -277,6 +321,29 @@ export default function Table() {
                     </div>
                 )}
             </div>
+
+            {/* Confirmation Modals */}
+            <ConfirmModal
+                isOpen={leaveConfirmOpen}
+                title="Rời khỏi bàn chơi"
+                message="Bạn có chắc chắn muốn rời khỏi bàn và quay lại sảnh không?"
+                onConfirm={() => { leaveRoom(); nav("/"); }}
+                onCancel={() => setLeaveConfirmOpen(false)}
+                confirmText="RỜI ĐI"
+                cancelText="Ở LẠI"
+                type="danger"
+            />
+
+            <ConfirmModal
+                isOpen={kickConfirm.isOpen}
+                title="Đuổi người chơi"
+                message={`Bạn có chắc chắn muốn mời "${kickConfirm.targetName}" ra khỏi phòng không?`}
+                onConfirm={() => kickPlayer(kickConfirm.targetId)}
+                onCancel={() => setKickConfirm({ isOpen: false, targetId: null, targetName: "" })}
+                confirmText="ĐUỔI NGAY"
+                cancelText="HỦY BỎ"
+                type="danger"
+            />
         </div>
     );
 }

@@ -11,9 +11,8 @@ import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Controller;
-
 import java.util.List;
-
+import java.util.Optional;
 import org.example.backend.service.IPlayerService;
 
 @Controller
@@ -23,23 +22,63 @@ public class GameSocketController {
     private final GameManager gameManager;
     private final IPlayerService playerService;
     private final org.example.backend.service.IRoomService roomService;
+    private final org.example.backend.service.FirebaseChatService firebaseChatService;
+    private final org.example.backend.repository.IPlayerInventoryRepository inventoryRepository;
 
     @MessageMapping("/game.join/{roomId}")
     public void joinGame(@DestinationVariable String roomId, @Payload Long playerId, org.springframework.messaging.simp.SimpMessageHeaderAccessor headerAccessor) {
         GameState game = gameManager.getOrCreateGame(roomId);
         Player player = playerService.findById(playerId).orElse(null);
         
+        // Initialize maxPlayers if not already synced with DB
+        roomService.findById(Long.parseLong(roomId)).ifPresent(room -> {
+            game.setMaxPlayers(room.getMaxPlayers() != null ? room.getMaxPlayers() : 4);
+        });
+
+        // Enforce maxPlayers limit
+        if (!game.getPlayerIds().contains(playerId) && game.getPlayerIds().size() >= game.getMaxPlayers()) {
+            messagingTemplate.convertAndSendToUser(playerId.toString(), "/topic/errors", "Phòng đã đầy!");
+            return;
+        }
+
         String name = (player != null) ? player.getDisplayName() : "Người chơi " + playerId;
         String rank = (player != null) ? player.getRankTier() : "Sắt IV";
         Integer points = (player != null) ? player.getRankPoints() : 0;
+        String avatar = (player != null) ? player.getAvatar() : null;
         
-        game.addPlayer(playerId, name, rank, points);
+        // Get equipped avatar frame and player card frame
+        String frameEffect = inventoryRepository.findEquippedItemByType(playerId, "AVATAR_FRAME")
+                .map(pi -> pi.getShopItem().getImageUrl())
+                .orElse(null);
+        String playerCardFrame = inventoryRepository.findEquippedItemByType(playerId, "PLAYER_CARD_FRAME")
+                .map(pi -> pi.getShopItem().getImageUrl())
+                .orElse(null);
+        String cardSkin = inventoryRepository.findEquippedItemByType(playerId, "CARD_SKIN")
+                .map(pi -> pi.getShopItem().getImageUrl())
+                .orElse(null);
+
+        game.addPlayer(playerId, name, rank, points, frameEffect, playerCardFrame, cardSkin, avatar);
 
         // Store session attributes for disconnect handling
         headerAccessor.getSessionAttributes().put("roomId", roomId);
         headerAccessor.getSessionAttributes().put("playerId", playerId);
-        
+
+        // Initialize empty history for instant join
+        game.setChatHistory(new java.util.ArrayList<>());
         broadcastUpdate(roomId, game);
+
+        // Load chat history from Firebase asynchronously
+        java.util.concurrent.CompletableFuture.runAsync(() -> {
+            try {
+                List<org.example.backend.entity.ChatMessage> history = firebaseChatService.getChatHistory(roomId);
+                if (!history.isEmpty()) {
+                    game.setChatHistory(history);
+                    broadcastUpdate(roomId, game);
+                }
+            } catch (Exception e) {
+                System.err.println("Firebase history load failed.");
+            }
+        });
     }
 
     @MessageMapping("/game.leave/{roomId}")
@@ -130,11 +169,34 @@ public class GameSocketController {
 
     @MessageMapping("/game.chat/{roomId}")
     public void handleChat(@DestinationVariable String roomId, @Payload ChatRequest request) {
+        Player player = playerService.findById(request.getPlayerId()).orElse(null);
+        String playerName = (player != null) ? player.getDisplayName() : "Người chơi " + request.getPlayerId();
+
+        org.example.backend.entity.ChatMessage chatMsg = org.example.backend.entity.ChatMessage.builder()
+                .roomId(roomId)
+                .playerId(request.getPlayerId())
+                .playerName(playerName)
+                .message(request.getMessage())
+                .timestamp(System.currentTimeMillis())
+                .build();
+        GameState game = gameManager.getOrCreateGame(roomId);
+        
+        // Add to RAM history (Circular buffer 50 messages)
+        List<org.example.backend.entity.ChatMessage> history = game.getChatHistory();
+        history.add(chatMsg);
+        if (history.size() > 50) {
+            history.remove(0);
+        }
+
+        // Save to Firebase asynchronously
+        java.util.concurrent.CompletableFuture.runAsync(() -> {
+            firebaseChatService.saveMessage(chatMsg);
+        });
+
         messagingTemplate.convertAndSend("/topic/game/" + roomId, 
             GameMessage.builder()
                 .type(GameMessage.MessageType.CHAT)
-                .payload(request.getPlayerId())
-                .content(request.getMessage())
+                .payload(chatMsg)
                 .build());
     }
 

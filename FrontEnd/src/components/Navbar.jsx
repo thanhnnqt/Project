@@ -52,7 +52,7 @@ export default function Navbar() {
                                 <span className="rank-badge">{user.rankTier}</span>
                                 <span className="rank-points">{user.rankPoints} DXH</span>
                             </div>
-                            <span className="user-name">Chào, {user.displayName}</span>
+                            <Link to="/profile" className="user-name">Chào, {user.displayName}</Link>
                             <span className="user-balance">💰 {user.balance} Xu</span>
                             <button onClick={handleLogout} className="btn-logout">Đăng xuất</button>
                         </div>

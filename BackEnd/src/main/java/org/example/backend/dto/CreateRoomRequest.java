@@ -10,4 +10,5 @@ public class CreateRoomRequest {
     private BigDecimal minBet;
     private Long hostId;
     private String password;
+    private Integer maxPlayers;
 }

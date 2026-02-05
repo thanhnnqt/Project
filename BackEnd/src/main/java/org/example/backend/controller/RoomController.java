@@ -59,6 +59,7 @@ public class RoomController {
         room.setMinBet(request.getMinBet());
         room.setHost(host);
         room.setPassword(request.getPassword());
+        room.setMaxPlayers(request.getMaxPlayers() != null ? request.getMaxPlayers() : gameType.getMaxPlayers());
         room.setStatus("WAITING");
         room.setCreatedAt(LocalDateTime.now());
 
@@ -66,5 +67,23 @@ public class RoomController {
         
         // Return as Response
         return ResponseEntity.status(HttpStatus.CREATED).body(RoomResponse.fromEntity(savedRoom, 0));
+    }
+
+    @PostMapping("/{roomId}/verify-password")
+    public ResponseEntity<?> verifyPassword(@PathVariable Long roomId, @RequestParam(required = false) String password) {
+        return roomService.findById(roomId).map(room -> {
+            String roomPass = room.getPassword();
+            // Nếu phòng không có mật khẩu (null hoặc rỗng), cho phép vào luôn
+            if (roomPass == null || roomPass.isEmpty()) {
+                return ResponseEntity.ok().build();
+            }
+            
+            // Nếu có mật khẩu, so sánh với mật khẩu gửi lên
+            if (roomPass.equals(password)) {
+                return ResponseEntity.ok().build();
+            } else {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Mật khẩu không chính xác");
+            }
+        }).orElse(ResponseEntity.notFound().build());
     }
 }

@@ -77,7 +77,6 @@ export default function Home() {
                 {/* RIGHT COLUMN - LEADERBOARD */}
                 <div className="leaderboard-section">
                     <h2>🏆 Bảng Xếp Hạng</h2>
-                    <p className="leaderboard-subtitle">Top 10 người chơi hàng đầu</p>
 
                     {leaderboardLoading ? (
                         <div className="loading-text">Đang tải bảng xếp hạng...</div>

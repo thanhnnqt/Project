@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import toast from 'react-hot-toast';
 import api from "../api/axios";
 import "./Register.css";
 
@@ -34,7 +35,7 @@ export default function Register() {
         setLoading(true);
         try {
             await api.post("/auth/register", formData);
-            alert("Chúc mừng! Bạn đã đăng ký thành công.");
+            toast.success("Chúc mừng! Bạn đã đăng ký thành công.");
             navigate("/login");
         } catch (err) {
             setError(err.response?.data || "Đã có lỗi xảy ra vui lòng thử lại sau.");

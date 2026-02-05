@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import toast from 'react-hot-toast';
 import api from "../api/axios";
 import "./Login.css";
 
@@ -24,7 +25,7 @@ export default function Login() {
             const response = await api.post("/auth/login", credentials);
             // In real app, response.data would contain JWT token
             localStorage.setItem("user", JSON.stringify(response.data));
-            alert("Đăng nhập thành công! Chào mừng bạn quay trở lại.");
+            toast.success("Đăng nhập thành công! Chào mừng bạn quay trở lại.");
             navigate("/");
         } catch (err) {
             setError(err.response?.data || "Tên đăng nhập hoặc mật khẩu không chính xác.");

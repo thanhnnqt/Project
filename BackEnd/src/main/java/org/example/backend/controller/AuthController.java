@@ -11,6 +11,15 @@ import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
 
+import org.springframework.web.multipart.MultipartFile;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.Optional;
+import java.util.UUID;
+import java.io.File;
+
 @RestController
 @RequestMapping("/api/auth")
 @RequiredArgsConstructor
@@ -69,5 +78,49 @@ public class AuthController {
         return playerService.findById(id)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
+    }
+
+    @PostMapping("/upload-avatar/{id}")
+    public ResponseEntity<?> uploadAvatar(@PathVariable Long id, @RequestParam("file") MultipartFile file) {
+        try {
+            Optional<Player> playerOpt = playerService.findById(id);
+            if (playerOpt.isEmpty()) {
+                return ResponseEntity.notFound().build();
+            }
+
+            if (file.isEmpty()) {
+                return ResponseEntity.badRequest().body("File không được trống");
+            }
+
+            // Create upload directory if not exists
+            String uploadDir = System.getProperty("user.dir") + "/uploads/avatars/";
+            File dir = new File(uploadDir);
+            if (!dir.exists()) {
+                dir.mkdirs();
+            }
+
+            // Generate unique filename
+            String originalFilename = file.getOriginalFilename();
+            String extension = "";
+            if (originalFilename != null && originalFilename.contains(".")) {
+                extension = originalFilename.substring(originalFilename.lastIndexOf("."));
+            }
+            String fileName = UUID.randomUUID().toString() + extension;
+            Path filePath = Paths.get(uploadDir + fileName);
+
+            // Save file
+            Files.copy(file.getInputStream(), filePath);
+
+            // Update player avatar URL
+            Player player = playerOpt.get();
+            // The URL will be served via WebConfig mapping /api/avatars/** to uploads/avatars/
+            String avatarUrl = "/api/avatars/" + fileName;
+            player.setAvatar(avatarUrl);
+            playerService.save(player);
+
+            return ResponseEntity.ok(player);
+        } catch (IOException e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Lỗi khi tải ảnh lên: " + e.getMessage());
+        }
     }
 }

@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
+import toast from 'react-hot-toast';
 import socketService from '../services/websocketService';
 
 export const useGameSocket = (roomId, playerId) => {
@@ -20,7 +21,18 @@ export const useGameSocket = (roomId, playerId) => {
                         setGameState(update.payload);
                     } else if (update.type === 'ERROR') {
                         setError(update.content);
-                    } else if (update.type === 'CHAT' || update.type === 'EMOJI') {
+                    } else if (update.type === 'CHAT') {
+                        const chat = update.payload;
+                        setGameState(prev => ({
+                            ...prev,
+                            lastInteraction: {
+                                type: update.type,
+                                playerId: chat.playerId,
+                                content: chat.message,
+                                timestamp: chat.timestamp || Date.now()
+                            }
+                        }));
+                    } else if (update.type === 'EMOJI') {
                         setGameState(prev => ({
                             ...prev,
                             lastInteraction: {
@@ -31,7 +43,7 @@ export const useGameSocket = (roomId, playerId) => {
                             }
                         }));
                     } else if (update.type === 'KICKED' && update.payload === playerId) {
-                        alert(update.content || "Bạn đã bị mời ra khỏi phòng.");
+                        toast.error(update.content || "Bạn đã bị mời ra khỏi phòng.");
                         window.location.href = "/";
                     }
                 });

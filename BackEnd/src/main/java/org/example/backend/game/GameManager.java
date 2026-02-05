@@ -16,7 +16,7 @@ import java.util.concurrent.ScheduledFuture;
 import org.example.backend.service.IPlayerService;
 import java.math.BigDecimal;
 
-import org.example.backend.service.RankService;
+import org.example.backend.service.impl.RankService;
 
 @Service
 @RequiredArgsConstructor
@@ -25,21 +25,34 @@ public class GameManager {
     private final TaskScheduler taskScheduler;
     private final IPlayerService playerService;
     private final RankService rankService;
+    private final org.example.backend.service.IRoomService roomService;
     private final Map<String, GameState> games = new ConcurrentHashMap<>();
     private final Map<String, ScheduledFuture<?>> turnTimers = new ConcurrentHashMap<>();
     private final TienLenLogic tienLenLogic = new TienLenLogic();
 
     private void updateBalances(GameState game, Long winnerId) {
+        BigDecimal minBet = roomService.findById(Long.parseLong(game.getRoomId()))
+                .map(room -> room.getMinBet())
+                .orElse(new BigDecimal("100.00")); // Fallback
+
+        int playerCount = game.getPlayerIds().size();
+        BigDecimal totalWinnings = minBet.multiply(new BigDecimal(playerCount - 1));
+
         for (Long playerId : game.getPlayerIds()) {
             playerService.findById(playerId).ifPresent(player -> {
                 if (playerId.equals(winnerId)) {
-                    // Winner gets +100
-                    player.setBalance(player.getBalance().add(new BigDecimal("100.00")));
-                    // Update Rank
-                    rankService.processWin(player);
+                    // Winner gets total winnings from others
+                    player.setBalance(player.getBalance().add(totalWinnings));
+                    
+                    // Update Rank and get possible promotion reward
+                    BigDecimal promotionReward = rankService.processWin(player);
+                    if (promotionReward.compareTo(BigDecimal.ZERO) > 0) {
+                        player.setBalance(player.getBalance().add(promotionReward));
+                    }
                 } else {
-                    // Losers get -20
-                    player.setBalance(player.getBalance().subtract(new BigDecimal("20.00")));
+                    // Losers lose exactly minBet
+                    player.setBalance(player.getBalance().subtract(minBet));
+                    
                     // Loss Rank
                     rankService.processLoss(player);
                 }

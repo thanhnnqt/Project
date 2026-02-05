@@ -63,6 +63,12 @@ public class ShopController {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Bạn đã sở hữu vật phẩm này");
         }
 
+        // Check if player meets rank requirement
+        int playerGlobalPoints = org.example.backend.service.impl.RankService.getGlobalPoints(player);
+        if (item.getMinRankPoints() != null && playerGlobalPoints < item.getMinRankPoints()) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Bạn chưa đạt hạng để nhận vật phẩm này");
+        }
+
         // Check if player has enough balance
         if (player.getBalance().compareTo(item.getPrice()) < 0) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Không đủ xu để mua");
@@ -82,5 +88,29 @@ public class ShopController {
         response.put("message", "Mua thành công!");
         response.put("newBalance", player.getBalance());
         return ResponseEntity.ok(response);
+    }
+    @PostMapping("/equip")
+    public ResponseEntity<?> equipItem(@RequestBody Map<String, Long> request) {
+        Long playerId = request.get("playerId");
+        Long itemId = request.get("itemId");
+
+        PlayerInventory itemToEquip = inventoryRepository.findByPlayerIdAndShopItemId(playerId, itemId)
+                .orElse(null);
+
+        if (itemToEquip == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Bạn chưa sở hữu vật phẩm này");
+        }
+
+        // Unequip all other items of the same type
+        String type = itemToEquip.getShopItem().getType();
+        List<PlayerInventory> inventory = inventoryRepository.findByPlayerId(playerId);
+        for (PlayerInventory pi : inventory) {
+            if (pi.getShopItem().getType().equals(type)) {
+                pi.setIsEquipped(pi.getId().equals(itemToEquip.getId()));
+            }
+        }
+        inventoryRepository.saveAll(inventory);
+
+        return ResponseEntity.ok("Đã trang bị vật phẩm!");
     }
 }

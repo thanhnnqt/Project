@@ -33,4 +33,6 @@ public class ShopItem {
     private String description;
 
     private String rarity; // COMMON, RARE, EPIC, LEGENDARY
+
+    private Integer minRankPoints = 0;
 }

@@ -11,6 +11,10 @@ public class GameState {
     private Map<Long, String> displayNames = new ConcurrentHashMap<>();
     private Map<Long, String> rankTiers = new ConcurrentHashMap<>();
     private Map<Long, Integer> rankPoints = new ConcurrentHashMap<>();
+    private Map<Long, String> avatars = new ConcurrentHashMap<>();
+    private Map<Long, String> equippedFrames = new ConcurrentHashMap<>(); // Stores CSS class for avatar frame
+    private Map<Long, String> playerCardFrames = new ConcurrentHashMap<>(); // Stores CSS class for large card frame
+    private Map<Long, String> cardSkins = new ConcurrentHashMap<>();       // Stores ID for card skin
     private Map<Long, List<Card>> hands = new ConcurrentHashMap<>();
     private List<Card> tableCards = new ArrayList<>();
     private Long lastPlayerId;
@@ -21,12 +25,14 @@ public class GameState {
     private Long hostId;
     private Long turnStartTime; // System.currentTimeMillis()
     private Long winnerId;
+    private int maxPlayers = 4;
+    private List<org.example.backend.entity.ChatMessage> chatHistory = new ArrayList<>();
 
     public GameState(String roomId) {
         this.roomId = roomId;
     }
 
-    public void addPlayer(Long playerId, String displayName, String rankTier, Integer rankPoints) {
+    public void addPlayer(Long playerId, String displayName, String rankTier, Integer rankPoints, String frameEffect, String cardEffect, String cardSkin, String avatar) {
         if (!playerIds.contains(playerId)) {
             playerIds.add(playerId);
         }
@@ -35,6 +41,26 @@ public class GameState {
         displayNames.put(playerId, displayName);
         rankTiers.put(playerId, rankTier);
         this.rankPoints.put(playerId, rankPoints);
+        if (avatar != null) {
+            avatars.put(playerId, avatar);
+        } else {
+            avatars.remove(playerId);
+        }
+        if (frameEffect != null) {
+            equippedFrames.put(playerId, frameEffect);
+        } else {
+            equippedFrames.remove(playerId);
+        }
+        if (cardEffect != null) {
+            playerCardFrames.put(playerId, cardEffect);
+        } else {
+            playerCardFrames.remove(playerId);
+        }
+        if (cardSkin != null) {
+            cardSkins.put(playerId, cardSkin);
+        } else {
+            cardSkins.remove(playerId);
+        }
 
         if (hostId == null) {
             hostId = playerId;
@@ -46,6 +72,10 @@ public class GameState {
         displayNames.remove(playerId);
         rankTiers.remove(playerId);
         rankPoints.remove(playerId);
+        avatars.remove(playerId);
+        equippedFrames.remove(playerId);
+        playerCardFrames.remove(playerId);
+        cardSkins.remove(playerId);
         hands.remove(playerId);
         readyPlayers.remove(playerId);
         if (playerId.equals(hostId)) {
