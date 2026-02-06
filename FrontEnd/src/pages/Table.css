@@ -389,3 +389,13 @@
     font-size: 2rem;
     background: #4a0000;
 }
+/* Phom Enhancements */
+.player-position-wrapper { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.phom-player-cards { display: flex; gap: 15px; background: rgba(0, 0, 0, 0.3); padding: 5px 10px; border-radius: 8px; border: 1px solid rgba(255, 215, 0, 0.2); }
+.eaten-cards, .player-discards { display: flex; gap: -25px; min-width: 40px; }
+.stolen-card-mini { width: 35px; height: 50px; margin-left: -20px; border: 1px solid #fbbf24; border-radius: 3px; box-shadow: 0 0 5px #fbbf24; background: white; object-fit: contain; }
+.trash-card-mini { width: 35px; height: 50px; margin-left: -20px; border: 1px solid #777; border-radius: 3px; background: white; object-fit: contain; }
+.p-top .phom-player-cards { transform: scale(0.8); }
+.p-left .phom-player-cards { transform: scale(0.8); }
+.p-right .phom-player-cards { transform: scale(0.8); }
+.my-phom-status { display: flex; gap: 20px; background: rgba(0, 0, 0, 0.4); padding: 10px; border-radius: 12px; border: 1px solid #fbbf24; }

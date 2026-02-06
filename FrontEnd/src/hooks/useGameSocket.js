@@ -103,5 +103,12 @@ export const useGameSocket = (roomId, playerId) => {
         socketService.send(`/app/game.emoji/${roomId}`, { playerId, emoji });
     }, [roomId, playerId]);
 
-    return { gameState, error, startGame, toggleReady, resetRoom, kickPlayer, playMove, passTurn, leaveRoom, sendChat, sendEmoji, setError };
+    const sendAction = useCallback((action) => {
+        socketService.send(`/app/game.action/${roomId}`, {
+            playerId,
+            ...action
+        });
+    }, [roomId, playerId]);
+
+    return { gameState, error, startGame, toggleReady, resetRoom, kickPlayer, playMove, passTurn, sendAction, leaveRoom, sendChat, sendEmoji, setError };
 };

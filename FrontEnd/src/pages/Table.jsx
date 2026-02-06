@@ -59,7 +59,7 @@ export default function Table() {
     }, [user?.id]);
 
     const {
-        gameState, error, startGame, toggleReady, resetRoom, kickPlayer, playMove, passTurn, leaveRoom, sendChat, sendEmoji, setError
+        gameState, error, startGame, toggleReady, resetRoom, kickPlayer, playMove, passTurn, sendAction, leaveRoom, sendChat, sendEmoji, setError
     } = useGameSocket(roomId, playerId);
 
     // Show errors via toast
@@ -81,15 +81,9 @@ export default function Table() {
         chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
     };
 
+    // Initial chat history from game state if available
     useEffect(() => {
-        if (chatHistory.length > 0) {
-            scrollToBottom();
-        }
-    }, [chatHistory]);
-
-    // Initial sync with room history
-    useEffect(() => {
-        if (gameState?.chatHistory && gameState.chatHistory.length >= chatHistory.length) {
+        if (gameState?.chatHistory) {
             setChatHistory(gameState.chatHistory.map(chat => ({
                 sender: chat.playerName,
                 content: chat.message,
@@ -97,6 +91,10 @@ export default function Table() {
             })));
         }
     }, [gameState?.chatHistory]);
+
+    useEffect(() => {
+        scrollToBottom();
+    }, [chatHistory]);
 
     // Handle incoming interactions (Chat/Emoji)
     useEffect(() => {
@@ -169,24 +167,135 @@ export default function Table() {
         if (pos >= others.length) return null;
         const id = others[pos];
         return (
-            <PlayerAvatar
-                playerId={id}
-                displayName={gameState.displayNames[id]}
-                rankTier={gameState.rankTiers[id]}
-                rankPoints={gameState.rankPoints[id]}
-                isHost={gameState.hostId === id}
-                isReady={gameState.readyPlayers.includes(id)}
-                isTurn={gameState.currentPlayerId === id}
-                handSize={gameState.hands[id]?.length || 0}
-                frameEffect={gameState.equippedFrames?.[id]}
-                playerCardFrame={gameState.playerCardFrames?.[id]}
-                cardSkin={gameState.cardSkins?.[id]}
-                avatar={gameState.avatars?.[id]}
-                message={interactions[id]?.type === 'CHAT' ? interactions[id].content : ''}
-                emoji={interactions[id]?.type === 'EMOJI' ? interactions[id].content : ''}
-                emojiTimestamp={interactions[id]?.ts}
-                onKick={gameState.hostId === playerId ? handleKickRequest : null}
-            />
+            <div className="player-position-wrapper">
+                <PlayerAvatar
+                    playerId={id}
+                    displayName={gameState.displayNames[id]}
+                    rankTier={gameState.rankTiers[id]}
+                    rankPoints={gameState.rankPoints[id]}
+                    isHost={gameState.hostId === id}
+                    isReady={gameState.readyPlayers.includes(id)}
+                    isTurn={gameState.currentPlayerId === id}
+                    handSize={gameState.hands[id]?.length || 0}
+                    frameEffect={gameState.equippedFrames?.[id]}
+                    playerCardFrame={gameState.playerCardFrames?.[id]}
+                    cardSkin={gameState.cardSkins?.[id]}
+                    avatar={gameState.avatars?.[id]}
+                    message={interactions[id]?.type === 'CHAT' ? interactions[id].content : ''}
+                    emoji={interactions[id]?.type === 'EMOJI' ? interactions[id].content : ''}
+                    emojiTimestamp={interactions[id]?.ts}
+                    onKick={gameState.hostId === playerId ? handleKickRequest : null}
+                />
+                {gameState.gameType.includes("Phỏm") && (
+                    <div className="phom-player-cards">
+                        <div className="eaten-cards">
+                            {gameState.gameData.stolenCards?.[id]?.map((card, i) => (
+                                <img key={i} src={getCardImage(card, id, gameState)} alt="eaten" className="stolen-card-mini" />
+                            ))}
+                        </div>
+                        <div className="player-discards">
+                            {gameState.gameData.playerTrashPiles?.[id]?.map((card, i) => (
+                                <img key={i} src={getCardImage(card, id, gameState)} alt="discarded" className="trash-card-mini" />
+                            ))}
+                        </div>
+                    </div>
+                )}
+            </div>
+        );
+    };
+
+    const renderActions = () => {
+        if (!gameState.gameStarted) {
+            return (
+                <div className="ready-start-box">
+                    {gameState.hostId === playerId ? (
+                        <button className="btn-3d btn-gold" onClick={startGame} disabled={gameState.playerIds.length < 2}>BẮT ĐẦU</button>
+                    ) : (
+                        <button className={`btn-3d ${gameState.readyPlayers.includes(playerId) ? 'btn-blue' : 'btn-green'}`} onClick={toggleReady}>
+                            {gameState.readyPlayers.includes(playerId) ? 'ĐÃ SẴN SÀNG' : 'SẴN SÀNG'}
+                        </button>
+                    )}
+                </div>
+            );
+        }
+
+        const gType = gameState.gameType || "";
+        if (gType.includes("Phỏm")) {
+            return (
+                <div className="game-action-row">
+                    <button className="btn-3d btn-blue-small" onClick={() => sendAction({ type: 'DRAW' })} disabled={!isMyTurn || gameState.gameData.turnStage !== 'DRAW'}>BỐC BÀI</button>
+                    <button className="btn-3d btn-green-small" onClick={() => sendAction({ type: 'STEAL' })} disabled={!isMyTurn || gameState.gameData.turnStage !== 'DRAW'}>ĂN BÀI</button>
+                    <button className="btn-3d btn-white-small" onClick={() => { sendAction({ type: 'PLAY', cards: selectedCards }); setSelectedCards([]); }} disabled={!isMyTurn || selectedCards.length !== 1 || gameState.gameData.turnStage !== 'DISCARD'}>ĐÁNH</button>
+                    <button className="btn-3d btn-gold-small" onClick={() => sendAction({ type: 'MELD', layout: [selectedCards] })} disabled={!isMyTurn || selectedCards.length < 3}>HẠ BÀI</button>
+                    <button className="btn-3d btn-blue-small" onClick={() => { sendAction({ type: 'ATTACH', cards: selectedCards, targetId: others[0] }); setSelectedCards([]); }} disabled={!isMyTurn || selectedCards.length === 0}>GỬI BÀI</button>
+                </div>
+            );
+        }
+        if (gType.includes("Poker")) {
+            return (
+                <div className="game-action-row">
+                    <button className="btn-3d btn-gray-small" onClick={() => sendAction({ type: 'FOLD' })} disabled={!isMyTurn}>FOLD</button>
+                    <button className="btn-3d btn-blue-small" onClick={() => sendAction({ type: 'CHECK' })} disabled={!isMyTurn}>CHECK</button>
+                    <button className="btn-3d btn-white-small" onClick={() => sendAction({ type: 'CALL' })} disabled={!isMyTurn}>CALL</button>
+                    <button className="btn-3d btn-gold-small" onClick={() => sendAction({ type: 'BET', amount: 100 })} disabled={!isMyTurn}>RAISE</button>
+                </div>
+            );
+        }
+        if (gType.includes("Mậu Binh")) {
+            return (
+                <div className="game-action-row">
+                    <button className="btn-3d btn-gold-small" onClick={() => sendAction({ type: 'LAYOUT', layout: [selectedCards.slice(0, 5), selectedCards.slice(5, 10), selectedCards.slice(10, 13)] })} disabled={selectedCards.length !== 13}>XONG</button>
+                </div>
+            );
+        }
+
+        // Default: Tiến Lên Miền Nam
+        return (
+            <div className="game-action-row">
+                <button className="btn-3d btn-gold-small" onClick={() => setSelectedCards([])} disabled={selectedCards.length === 0}>BỎ CHỌN</button>
+                <button className="btn-3d btn-gray-small" onClick={passTurn} disabled={!isMyTurn || gameState.tableCards.length === 0}>BỎ LƯỢT</button>
+                <button className="btn-3d btn-white-small" onClick={handlePlay} disabled={!isMyTurn || selectedCards.length === 0}>ĐÁNH BÀI</button>
+            </div>
+        );
+    };
+
+    const renderTableCenter = () => {
+        const gType = gameState.gameType || "";
+        if (gType.includes("Poker")) {
+            return (
+                <div className="poker-table-center">
+                    <div className="poker-pot">Pot: {gameState.gameData.pot}</div>
+                    <div className="community-cards">
+                        {gameState.tableCards.map((card, i) => (
+                            <img key={i} src={getCardImage(card, null, gameState)} alt="c" className="community-card" />
+                        ))}
+                    </div>
+                </div>
+            );
+        }
+
+        if (gType.includes("Phỏm")) {
+            return (
+                <div className="phom-table-center">
+                    <div className="trash-pile">
+                        {gameState.gameData.trashPile?.slice(-3).map((card, i) => (
+                            <img key={i} src={getCardImage(card, null, gameState)} alt="c" className="trash-card" />
+                        ))}
+                    </div>
+                </div>
+            );
+        }
+
+        return (
+            <div className="played-cards-stack">
+                {gameState.tableCards.length > 0 ? (
+                    gameState.tableCards.map((card, i) => (
+                        <img key={i} src={getCardImage(card, null, gameState)} alt="c" className="played-card-img" />
+                    ))
+                ) : (
+                    <div className="invite-empty">Mời chơi</div>
+                )}
+            </div>
         );
     };
 
@@ -195,7 +304,7 @@ export default function Table() {
             {/* Header */}
             <div className="casino-top-bar">
                 <button className="top-btn" onClick={() => setLeaveConfirmOpen(true)}>❮</button>
-                <div className="room-title">TIẾN LÊN [Bàn {roomId}]</div>
+                <div className="room-title">{(gameState.gameType || "TIẾN LÊN").toUpperCase()} [Bàn {roomId}]</div>
                 <button className="top-btn">⚙️</button>
             </div>
 
@@ -203,17 +312,9 @@ export default function Table() {
                 {/* Oval Table */}
                 <div className="oval-table">
                     <div className="table-inner-glow"></div>
-                    <div className="table-logo"><div className="logo-text">TIẾN LÊN</div></div>
+                    <div className="table-logo"><div className="logo-text">{(gameState.gameType || "TIẾN LÊN").toUpperCase()}</div></div>
                     <div className="table-center-cards">
-                        {gameState.tableCards.length > 0 ? (
-                            <div className="played-cards-stack">
-                                {gameState.tableCards.map((card, i) => (
-                                    <img key={i} src={getCardImage(card, null, gameState)} alt="c" className="played-card-img" />
-                                ))}
-                            </div>
-                        ) : (
-                            <div className="invite-empty">Mời chơi</div>
-                        )}
+                        {renderTableCenter()}
                     </div>
                 </div>
 
@@ -225,23 +326,7 @@ export default function Table() {
                 {/* My Area */}
                 <div className="my-area-casino">
                     <div className="casino-actions-3d">
-                        {!gameState.gameStarted ? (
-                            <div className="ready-start-box">
-                                {gameState.hostId === playerId ? (
-                                    <button className="btn-3d btn-gold" onClick={startGame} disabled={gameState.playerIds.length < 2}>BẮT ĐẦU</button>
-                                ) : (
-                                    <button className={`btn-3d ${gameState.readyPlayers.includes(playerId) ? 'btn-blue' : 'btn-green'}`} onClick={toggleReady}>
-                                        {gameState.readyPlayers.includes(playerId) ? 'ĐÃ SẴN SÀNG' : 'SẴN SÀNG'}
-                                    </button>
-                                )}
-                            </div>
-                        ) : (
-                            <div className="game-action-row">
-                                <button className="btn-3d btn-gold-small" onClick={() => setSelectedCards([])} disabled={selectedCards.length === 0}>BỎ CHỌN</button>
-                                <button className="btn-3d btn-gray-small" onClick={passTurn} disabled={!isMyTurn || gameState.tableCards.length === 0}>BỎ LƯỢT</button>
-                                <button className="btn-3d btn-white-small" onClick={handlePlay} disabled={!isMyTurn || selectedCards.length === 0}>ĐÁNH BÀI</button>
-                            </div>
-                        )}
+                        {renderActions()}
                     </div>
 
                     <div className="my-footer-row">
@@ -263,6 +348,21 @@ export default function Table() {
                                 emojiTimestamp={interactions[playerId]?.ts}
                             />
                         </div>
+
+                        {gameState.gameType.includes("Phỏm") && (
+                            <div className="my-phom-status">
+                                <div className="eaten-cards">
+                                    {gameState.gameData.stolenCards?.[playerId]?.map((card, i) => (
+                                        <img key={i} src={getCardImage(card, playerId, gameState)} alt="eaten" className="stolen-card-mini" />
+                                    ))}
+                                </div>
+                                <div className="player-discards">
+                                    {gameState.gameData.playerTrashPiles?.[playerId]?.map((card, i) => (
+                                        <img key={i} src={getCardImage(card, playerId, gameState)} alt="discarded" className="trash-card-mini" />
+                                    ))}
+                                </div>
+                            </div>
+                        )}
                         <div className="my-hand-casino">
                             {myHand.map((card, i) => (
                                 <img
