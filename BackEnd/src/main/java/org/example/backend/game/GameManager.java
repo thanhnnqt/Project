@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import org.example.backend.dto.GameMessage;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -26,14 +27,33 @@ public class GameManager {
     private final IPlayerService playerService;
     private final RankService rankService;
     private final org.example.backend.service.IRoomService roomService;
+    
     private final Map<String, GameState> games = new ConcurrentHashMap<>();
     private final Map<String, ScheduledFuture<?>> turnTimers = new ConcurrentHashMap<>();
-    private final TienLenLogic tienLenLogic = new TienLenLogic();
+    
+    // Logic Registry - Keys must match or contain database names
+    private final Map<String, IGameLogic> logics = new ConcurrentHashMap<>() {{
+        put("Tiến Lên Miền Nam", new TienLenLogic());
+        put("Phỏm (Tá Lả)", new PhomLogic());
+        put("Mậu Binh", new BinhLogic());
+        put("Poker (Texas Hold'em)", new PokerLogic());
+    }};
+
+    private IGameLogic getLogic(String gameType) {
+        if (gameType == null) return logics.get("Tiến Lên Miền Nam");
+        for (Map.Entry<String, IGameLogic> entry : logics.entrySet()) {
+            if (gameType.toLowerCase().contains(entry.getKey().toLowerCase()) || 
+                entry.getKey().toLowerCase().contains(gameType.toLowerCase())) {
+                return entry.getValue();
+            }
+        }
+        return logics.get("Tiến Lên Miền Nam");
+    }
 
     private void updateBalances(GameState game, Long winnerId) {
         BigDecimal minBet = roomService.findById(Long.parseLong(game.getRoomId()))
                 .map(room -> room.getMinBet())
-                .orElse(new BigDecimal("100.00")); // Fallback
+                .orElse(new BigDecimal("100.00"));
 
         int playerCount = game.getPlayerIds().size();
         BigDecimal totalWinnings = minBet.multiply(new BigDecimal(playerCount - 1));
@@ -41,24 +61,16 @@ public class GameManager {
         for (Long playerId : game.getPlayerIds()) {
             playerService.findById(playerId).ifPresent(player -> {
                 if (playerId.equals(winnerId)) {
-                    // Winner gets total winnings from others
                     player.setBalance(player.getBalance().add(totalWinnings));
-                    
-                    // Update Rank and get possible promotion reward
                     BigDecimal promotionReward = rankService.processWin(player);
                     if (promotionReward.compareTo(BigDecimal.ZERO) > 0) {
                         player.setBalance(player.getBalance().add(promotionReward));
                     }
                 } else {
-                    // Losers lose exactly minBet
                     player.setBalance(player.getBalance().subtract(minBet));
-                    
-                    // Loss Rank
                     rankService.processLoss(player);
                 }
                 playerService.save(player);
-                
-                // Sync GameState
                 game.getRankTiers().put(playerId, player.getRankTier());
                 game.getRankPoints().put(playerId, player.getRankPoints());
             });
@@ -73,7 +85,7 @@ public class GameManager {
         game.setTurnStartTime(System.currentTimeMillis());
         
         ScheduledFuture<?> timer = taskScheduler.schedule(() -> {
-            autoPlaySmallestCard(roomId);
+            autoPlayAction(roomId);
         }, Instant.now().plusSeconds(15));
         
         turnTimers.put(roomId, timer);
@@ -86,67 +98,62 @@ public class GameManager {
         }
     }
 
-    private void autoPlaySmallestCard(String roomId) {
+    private void autoPlayAction(String roomId) {
         GameState game = games.get(roomId);
         if (game == null || !game.isGameStarted()) return;
 
         Long currentPlayerId = game.getCurrentPlayerId();
-        List<Card> hand = game.getHands().get(currentPlayerId);
-        if (hand == null || hand.isEmpty()) return;
+        
+        // Default Auto-play logic (mainly for Tien Len)
+        if ("Tiến Lên".equals(game.getGameType())) {
+            List<Card> hand = game.getHands().get(currentPlayerId);
+            if (hand == null || hand.isEmpty()) return;
 
-        List<Card> cardsToPlay = new java.util.ArrayList<>();
-        if (game.getTableCards().isEmpty()) {
-            // Leader: Play smallest card
-            cardsToPlay.add(hand.get(0));
-            handlePlay(roomId, currentPlayerId, cardsToPlay);
-        } else {
-            // Following: Just pass instead of playing
-            handlePass(roomId, currentPlayerId);
+            if (game.getTableCards().isEmpty()) {
+                handleAction(roomId, GameAction.builder()
+                        .type(GameAction.ActionType.PLAY)
+                        .playerId(currentPlayerId)
+                        .cards(List.of(hand.get(0)))
+                        .build());
+            } else {
+                handleAction(roomId, GameAction.builder()
+                        .type(GameAction.ActionType.PASS)
+                        .playerId(currentPlayerId)
+                        .build());
+            }
         }
         
-        // Broadcast the update after auto-play
-        messagingTemplate.convertAndSend("/topic/game/" + roomId, 
-            GameMessage.builder().type(GameMessage.MessageType.UPDATE).payload(game).build());
+        broadcastUpdate(roomId, game);
     }
 
     public GameState getOrCreateGame(String roomId) {
-        return games.computeIfAbsent(roomId, GameState::new);
+        return games.computeIfAbsent(roomId, id -> {
+            GameState state = new GameState(id);
+            try {
+                roomService.findById(Long.parseLong(id)).ifPresent(room -> {
+                    if (room.getGameType() != null) {
+                        state.setGameType(room.getGameType().getName());
+                    }
+                });
+            } catch (Exception e) {
+                // Ignore parsing errors for non-numeric room IDs if any
+            }
+            return state;
+        });
     }
 
     public void startGame(String roomId, Long requesterId) {
         GameState game = games.get(roomId);
         if (game == null) return;
-        
-        // 1. Only host can start
         if (!requesterId.equals(game.getHostId())) return;
-        
-        // 2. All other players must be ready
-        boolean allReady = true;
-        for (Long playerId : game.getPlayerIds()) {
-            if (!playerId.equals(game.getHostId()) && !game.getReadyPlayers().contains(playerId)) {
-                allReady = false;
-                break;
-            }
-        }
-        
+
+        boolean allReady = game.getPlayerIds().stream()
+                .filter(id -> !id.equals(game.getHostId()))
+                .allMatch(id -> game.getReadyPlayers().contains(id));
+
         if (!allReady || game.getPlayerIds().size() < 2) return;
 
-        Deck deck = new Deck();
-        deck.shuffle();
-        List<List<Card>> dealtHands = deck.deal(game.getPlayerIds().size(), 13);
-
-        for (int i = 0; i < game.getPlayerIds().size(); i++) {
-            Long playerId = game.getPlayerIds().get(i);
-            List<Card> hand = dealtHands.get(i);
-            tienLenLogic.sortCards(hand);
-            game.getHands().put(playerId, hand);
-        }
-
-        game.setGameStarted(true);
-        game.setTableCards(new java.util.ArrayList<>());
-        game.getPassedPlayers().clear();
-        game.setWinnerId(null);
-        game.setCurrentTurnIndex(0);
+        getLogic(game.getGameType()).setupGame(game);
         startTurnTimer(roomId);
     }
 
@@ -164,8 +171,6 @@ public class GameManager {
     public boolean kickPlayer(String roomId, Long hostId, Long targetId) {
         GameState game = games.get(roomId);
         if (game == null || game.isGameStarted()) return false;
-        
-        // Only host can kick and cannot kick themselves
         if (hostId.equals(game.getHostId()) && !hostId.equals(targetId)) {
             game.removePlayer(targetId);
             return true;
@@ -173,45 +178,48 @@ public class GameManager {
         return false;
     }
 
-    public boolean handlePlay(String roomId, Long playerId, List<Card> cardsToPlay) {
+    public boolean handleAction(String roomId, GameAction action) {
         GameState game = games.get(roomId);
         if (game == null || !game.isGameStarted()) return false;
-        if (!game.getCurrentPlayerId().equals(playerId)) return false;
 
-        if (tienLenLogic.isValidMove(cardsToPlay, game.getTableCards())) {
-            // Remove cards from hand
-            List<Card> hand = game.getHands().get(playerId);
-            hand.removeAll(cardsToPlay);
+        IGameLogic logic = getLogic(game.getGameType());
+        boolean success = logic.handleAction(game, action);
 
-            // Update table
-            game.setTableCards(cardsToPlay);
-            game.setLastPlayerId(playerId);
+        if (success) {
             resetTurnTimer(roomId);
-
-            // Check if win
-            if (hand.isEmpty()) {
-                game.setWinnerId(playerId);
+            if (game.getWinnerId() != null) {
                 game.setGameStarted(false);
-                game.getReadyPlayers().clear(); // Reset sẵn sàng cho ván mới
-                updateBalances(game, playerId); // Lưu điểm/xu vào Database
-                return true;
+                updateBalances(game, game.getWinnerId());
+            } else {
+                startTurnTimer(roomId);
             }
-
-            game.nextTurn();
-            startTurnTimer(roomId);
             return true;
         }
         return false;
     }
 
+    // Deprecated but kept for backward compatibility during refactor if needed
+    public boolean handlePlay(String roomId, Long playerId, List<Card> cards) {
+        return handleAction(roomId, GameAction.builder()
+                .type(GameAction.ActionType.PLAY)
+                .playerId(playerId)
+                .cards(cards)
+                .build());
+    }
+
+    public void handlePass(String roomId, Long playerId) {
+        handleAction(roomId, GameAction.builder()
+                .type(GameAction.ActionType.PASS)
+                .playerId(playerId)
+                .build());
+    }
+
     public void resetRoom(String roomId, Long requesterId) {
         GameState game = games.get(roomId);
         if (game == null || game.isGameStarted()) return;
-        
-        // Only host can reset
         if (requesterId.equals(game.getHostId())) {
             game.setWinnerId(null);
-            game.setTableCards(new java.util.ArrayList<>());
+            game.setTableCards(new ArrayList<>());
         }
     }
 
@@ -220,21 +228,8 @@ public class GameManager {
         resetTurnTimer(roomId);
     }
 
-    public void handlePass(String roomId, Long playerId) {
-        GameState game = games.get(roomId);
-        if (game == null || !game.isGameStarted()) return;
-        if (!game.getCurrentPlayerId().equals(playerId)) return;
-        
-        // Rule: Cannot pass if table is empty (starting a new round)
-        if (game.getTableCards().isEmpty()) {
-            messagingTemplate.convertAndSend("/topic/game/" + roomId, 
-                GameMessage.builder().type(GameMessage.MessageType.ERROR).content("Không thể bỏ lượt khi bắt đầu vòng mới!").build());
-            return;
-        }
-
-        resetTurnTimer(roomId);
-        game.getPassedPlayers().add(playerId);
-        game.nextTurn();
-        startTurnTimer(roomId);
+    private void broadcastUpdate(String roomId, GameState game) {
+        messagingTemplate.convertAndSend("/topic/game/" + roomId, 
+            GameMessage.builder().type(GameMessage.MessageType.UPDATE).payload(game).build());
     }
 }

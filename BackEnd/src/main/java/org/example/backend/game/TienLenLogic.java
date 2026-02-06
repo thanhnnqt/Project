@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 
 public class TienLenLogic implements IGameLogic {
 
@@ -13,6 +14,77 @@ public class TienLenLogic implements IGameLogic {
     }
 
     @Override
+    public void setupGame(GameState state) {
+        Deck deck = new Deck();
+        deck.shuffle();
+        List<List<Card>> dealtHands = deck.deal(state.getPlayerIds().size(), 13);
+
+        for (int i = 0; i < state.getPlayerIds().size(); i++) {
+            Long playerId = state.getPlayerIds().get(i);
+            List<Card> hand = dealtHands.get(i);
+            sortCards(hand);
+            state.getHands().put(playerId, hand);
+        }
+
+        state.setGameStarted(true);
+        state.setTableCards(new ArrayList<>());
+        state.getPassedPlayers().clear();
+        state.setWinnerId(null);
+        state.setCurrentTurnIndex(0);
+        state.setGameType("Tiến Lên");
+    }
+
+    @Override
+    public boolean handleAction(GameState state, GameAction action) {
+        if (!state.isGameStarted()) return false;
+        if (!state.getCurrentPlayerId().equals(action.getPlayerId())) return false;
+
+        switch (action.getType()) {
+            case PLAY:
+                return handlePlay(state, action.getPlayerId(), action.getCards());
+            case PASS:
+                return handlePass(state, action.getPlayerId());
+            default:
+                return false;
+        }
+    }
+
+    private boolean handlePlay(GameState state, Long playerId, List<Card> cardsToPlay) {
+        if (isValidMove(cardsToPlay, state.getTableCards())) {
+            List<Card> hand = state.getHands().get(playerId);
+            hand.removeAll(cardsToPlay);
+
+            state.setTableCards(cardsToPlay);
+            state.setLastPlayerId(playerId);
+            
+            checkWin(state);
+            if (state.getWinnerId() == null) {
+                state.nextTurn();
+            }
+            return true;
+        }
+        return false;
+    }
+
+    private boolean handlePass(GameState state, Long playerId) {
+        if (state.getTableCards().isEmpty()) return false; // Cannot pass on new round
+        state.getPassedPlayers().add(playerId);
+        state.nextTurn();
+        return true;
+    }
+
+    @Override
+    public void checkWin(GameState state) {
+        for (Map.Entry<Long, List<Card>> entry : state.getHands().entrySet()) {
+            if (entry.getValue().isEmpty()) {
+                state.setWinnerId(entry.getKey());
+                state.setGameStarted(false);
+                state.getReadyPlayers().clear();
+                return;
+            }
+        }
+    }
+
     public boolean isValidMove(List<Card> cardsToPlay, List<Card> lastPlayedCards) {
         if (cardsToPlay == null || cardsToPlay.isEmpty()) return false;
         
@@ -35,7 +107,6 @@ public class TienLenLogic implements IGameLogic {
         return isSpecialCut(cardsToPlay, lastPlayedCards, type, lastType);
     }
 
-    @Override
     public int compareMoves(List<Card> newCards, List<Card> oldCards) {
         // In Tien Len, the strength of a group is determined by its highest card
         Card highestNew = getHighestCard(newCards);

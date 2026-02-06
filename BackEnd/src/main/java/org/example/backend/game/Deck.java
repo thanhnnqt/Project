@@ -37,6 +37,15 @@ public class Deck {
         return hands;
     }
     
+    public Card draw() {
+        if (cards.isEmpty()) return null;
+        return cards.remove(0);
+    }
+
+    public boolean isEmpty() {
+        return cards.isEmpty();
+    }
+    
     public List<Card> getCards() {
         return new ArrayList<>(cards);
     }

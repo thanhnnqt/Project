@@ -167,6 +167,24 @@ public class GameSocketController {
         broadcastUpdate(roomId, game);
     }
 
+    @MessageMapping("/game.action/{roomId}")
+    public void handleAction(@DestinationVariable String roomId, @Payload org.example.backend.game.GameAction action) {
+        boolean success = gameManager.handleAction(roomId, action);
+        GameState game = gameManager.getOrCreateGame(roomId);
+
+        if (success) {
+            if (game.getWinnerId() != null) {
+                messagingTemplate.convertAndSend("/topic/game/" + roomId, 
+                    GameMessage.builder().type(GameMessage.MessageType.WINNER).payload(game).build());
+            } else {
+                broadcastUpdate(roomId, game);
+            }
+        } else {
+            messagingTemplate.convertAndSend("/topic/game/" + roomId, 
+                GameMessage.builder().type(GameMessage.MessageType.ERROR).content("Hành động không hợp lệ!").build());
+        }
+    }
+
     @MessageMapping("/game.chat/{roomId}")
     public void handleChat(@DestinationVariable String roomId, @Payload ChatRequest request) {
         Player player = playerService.findById(request.getPlayerId()).orElse(null);

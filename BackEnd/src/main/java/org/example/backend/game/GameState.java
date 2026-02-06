@@ -26,6 +26,8 @@ public class GameState {
     private Long turnStartTime; // System.currentTimeMillis()
     private Long winnerId;
     private int maxPlayers = 4;
+    private String gameType = "Tiến Lên"; // Default
+    private Map<String, Object> gameData = new HashMap<>(); // Generic storage for game-specific state
     private List<org.example.backend.entity.ChatMessage> chatHistory = new ArrayList<>();
 
     public GameState(String roomId) {

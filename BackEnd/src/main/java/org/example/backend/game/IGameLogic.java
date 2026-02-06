@@ -4,16 +4,21 @@ import java.util.List;
 
 public interface IGameLogic {
     /**
-     * Checks if a move is valid given the current state of the table.
+     * Handles a player action and updates the game state appropriately.
+     * Returns true if the action was valid and processed.
      */
-    boolean isValidMove(List<Card> cardsToPlay, List<Card> lastPlayedCards);
+    boolean handleAction(GameState state, GameAction action);
 
     /**
-     * Compares two sets of cards (e.g., to see if one "chặt" the other).
-     * Returns > 0 if newCards is stronger than oldCards.
+     * Sets up the initial state for a new game (e.g., dealing cards).
      */
-    int compareMoves(List<Card> newCards, List<Card> oldCards);
-    
+    void setupGame(GameState state);
+
+    /**
+     * Determines the winner or calculates final scores.
+     */
+    void checkWin(GameState state);
+
     /**
      * Sorts cards according to game rules.
      */
